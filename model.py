@@ -6,12 +6,14 @@ from sql_utilities import SQLUtility
 
 class TimetableScheduler():
     def __init__(self, fname: str, timeslots_per_day: int):
+        self.timeslots_per_day = timeslots_per_day
         self.fname = fname
 
         self.solver = Solver()
         self.model = None
 
         self.X = dict()
+        self.Y = dict()
         self.indexes = dict()
         self.database = None
         self.T = list(range(timeslots_per_day*6)) # Ammettiamo che si facciano lezioni dal lunedì al sabato (se non vuole che si faccia il sabato basta aggiungere manualmente ulteriori vincoli)
@@ -27,7 +29,8 @@ class TimetableScheduler():
         # fill variables with indexes
         for (S,T,R) in itertools.product(self.indexes["Sessions"], self.T, self.indexes["Rooms"]):
             idx_string = f"{S}%{T}%{R}"
-            self.X[S,T,R] = Bool(idx_string)
+            self.X[S,T,R] = Bool(f'X_{idx_string}')
+            self.Y[S,T,R] = Bool(f'Y_{idx_string}')
 
         self.started = False
 
@@ -55,6 +58,26 @@ class TimetableScheduler():
                 f"C7-{S}%{T}%{R}"
             )
             
+            # C2: modified
+            S_h = self.database.get_hours(S)
+
+            if T+S_h > max(self.T) or ((T+S_h) // self.timeslots_per_day) != (T//self.timeslots_per_day):
+                self.solver.assert_and_track(
+                        Not(self.Y[S,T,R]),
+                    f"noC2-{S}%{T}%{R}"
+                )
+            else:
+                self.solver.assert_and_track(
+                    Implies(
+                        self.Y[S,T,R],
+                        And(
+                            [ self.X[S,T+k, R] for k in range(0, S_h) ]
+                        )
+                    ),
+                        f"C2-{S}%{T}%{R}"
+                )
+
+            """
             # C2
             S_h = self.database.get_hours(S)
 
@@ -121,6 +144,7 @@ class TimetableScheduler():
                     ),
                     f'C2-{S}%{T}%{R}'
                 )
+            """
 
         # C3: A professor can have only one session at the same time
         # C4: There cannot be >=2 sessions of courses belonging to the same CdS in the same timeslot (and any room) 
@@ -151,7 +175,7 @@ class TimetableScheduler():
             self.solver.assert_and_track(
                 Implies(
                     Or( [ self.X[S,T,A] for T in self.T ] ),
-                    self.database.get_total_students(self.database.get_course(S)) >= self.database.get_capacity(A)
+                    self.database.get_total_students(self.database.get_course(S)) <= self.database.get_capacity(A)
                 ),
                 f'c5-{S}%{A}'
             )
@@ -159,10 +183,12 @@ class TimetableScheduler():
         # C6: Every session must be organized exactly only one time (i.e. the amount of hours are exactly right)
         for S in self.indexes['Sessions']:
             h = self.database.get_hours(S)
+
             self.solver.assert_and_track(
-                sum([self.X[S, T, R] for (T,R) in itertools.product(self.T, self.indexes['Rooms'])]) == h,
-                f'C6-{S}'
+                sum([self.Y[S, T, R] for (T,R) in itertools.product(self.T, self.indexes['Rooms'])]) == 1,
+                f'A-C6-{S}'
             )
+
 
         self.posed = True
 
