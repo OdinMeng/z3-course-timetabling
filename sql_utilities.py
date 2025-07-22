@@ -1,3 +1,5 @@
+"""File containing SQL statements for retrieving necessary data from the database"""
+
 import sqlite3 as sq3
 from typing import Dict, List
 
@@ -109,24 +111,29 @@ class SQLUtility():
             (course, ))
         return [i[0] for i in query.fetchall()]
 
+    def get_hours(self, session) -> int:
+        self.check()
+
+        query = self.con.execute("SELECT Hours FROM Session WHERE IDSession = ?;", (session,))
+        return query.fetchone()[0]
+
     def get_other_session_courses(self, session) -> List:
         self.check()
-        # return sessions of other courses of the same CdS, excluding the course of the input session (note: ad hoc function)
+        # return sessions of other courses of the same CdS, excluding the session specified in input
 
         query = self.con.execute("""
             SELECT DISTINCT S2.IDSession
-            FROM    Session S1, Courses C1, CourseCdS T1,
-                    Session S2, Courses C2, CourseCdS T2
+            FROM Session S1, Session S2, Courses C1, Courses C2, CourseCdS T1, CourseCdS T2
             WHERE
-                S1.IDSession = ?            AND
+                S1.IDSession = ?           AND
                 S1.IDCourse  = C1.IDCourse       AND
                 C1.IDCourse  = T1.IDCourse       AND
-                T1.IDCdS     = T2.IDCdS          AND
-                T2.IDCourse = C2.IDCourse       AND
-                C2.IDCourse <> C1.IDCourse       AND
-                C2.IDCourse  = S2.IDCourse;
+                T1.IDCdS = T2.IDCdS AND
+                T2.IDCourse = C2.IDCourse AND
+                C2.IDCourse = S2.IDCourse AND
+                S2.IDSession <> ?;
                                  """,
-            (session,))
+            (session, session,))
         return [i[0] for i in query.fetchall()]
 
     def get_professor(self, session) -> int:
@@ -173,5 +180,48 @@ class SQLUtility():
         RETDICT['Rooms'] = [i[0] for i in s_rooms.fetchall()]
 
         return RETDICT
+    
+    def get_class_name(self, cds) -> str:
+        self.check()
+
+        query = self.con.execute("SELECT NameCdS FROM CdS WHERE IDCdS = ?;", (cds,))
+        return query.fetchone()[0]
+    
+    def get_session_name(self, session) -> str:
+        self.check()
+
+        query = self.con.execute("SELECT Name FROM Session S, Courses C WHERE S.IDSession = ? AND S.IDCourse = C.IDCourse;", (session,))
+        return query.fetchone()[0]
+    
+    def get_courses(self, cds) -> List:
+        self.check()
+        query = self.con.execute("SELECT DISTINCT Courses.IDCourse FROM Courses, CourseCdS WHERE CourseCdS.IDCdS = ?;", (cds,))
+
+        return [i[0] for i in query.fetchall()]
+
+    def get_names(self) -> Dict:
+        self.check()
+
+        RETDICT = {}
+
+        s_courses = self.con.execute("SELECT IDCourse, Name FROM Courses;")
+        s_professors = self.con.execute("SELECT IDProfessor, Name FROM Professor;")
+        s_cds = self.con.execute("SELECT IDCdS, NameCdS FROM CdS;")
+        s_rooms = self.con.execute("SELECT IDRoom, Name FROM Rooms;")
+
+        RETDICT['Courses'] = {i[0]: i[1] for i in s_courses.fetchall()}
+        RETDICT['Professors'] = {i[0]: i[1] for i in s_professors.fetchall()}
+        RETDICT['CdS'] = {i[0]: i[1] for i in s_cds.fetchall()}
+        RETDICT['Rooms'] = {i[0]: i[1] for i in s_rooms.fetchall()}
+
+        return RETDICT
+
+
+    def execute_query(self, query):
+        # DA USARE TEMPORANEAMENTE!!!
+        self.check()
+
+        q = self.con.execute(query)
+        return q
 
     # sono tutte delle SELECT o robe strane bruh

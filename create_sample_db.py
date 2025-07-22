@@ -106,7 +106,13 @@ INSERT INTO Rooms (IDRoom, Capacity, Name) VALUES
   (305,  100, 'Aula Magna H3'),
   (306,  10, 'Via Economo Aula 1'),
   (307,  80, 'Aula 3A H2 Bis'),
-  (308,  80, 'Aula I Edificio Tutankhamon');
+  (308,  80, 'Aula I Edificio Tutankhamon'),
+  (309, 120, 'Aula Morin 2'),
+  (310, 120, 'Aula Morin 3'),
+  (311, 120, 'Aula Morin 4'),
+  (312, 120, 'Aula Morin 5'),
+  (313, 120, 'Aula Morin 6');
+
 """
 )
 
