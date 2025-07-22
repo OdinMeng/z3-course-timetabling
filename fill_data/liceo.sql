@@ -9,12 +9,14 @@ INSERT INTO Professor (IDProfessor, Name) VALUES
   (5, "A.P."),
   (6, "R.S."),
   (7, "C.N."),
-  (8, "boh"),
+  (8, "L.G."),
   (9, "boh 2"),
   (10, "boh 3");
 
 /* ----------  Courses  ---------- */
 INSERT INTO Courses (IDCourse, IDProfessor, Name) VALUES
+  -- Oss: ogni corso è lo stesso per ogni anno, ma vanno comunque separati
+
   (1100, 1, "LINGUA E LETTERATURA ITALIANA"),
   (1201, 2, "PRIMA LINGUA STRANIERA (INGLESE)"),
   (1202, 3, "SECONDA LINGUA STRANIERA (TEDESCO)"),
