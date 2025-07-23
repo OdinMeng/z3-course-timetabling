@@ -15,8 +15,9 @@ class TimetableScheduler():
         self.X = dict()
         self.Y = dict()
         self.indexes = dict()
-        self.database = None
         self.T = list(range(timeslots_per_day*6)) # Ammettiamo che si facciano lezioni dal lunedì al sabato (se non vuole che si faccia il sabato basta aggiungere manualmente ulteriori vincoli)
+
+        self.database = None
 
         self.started = False
         self.posed = False
@@ -32,10 +33,10 @@ class TimetableScheduler():
             self.X[S,T,R] = Bool(f'X_{idx_string}')
             self.Y[S,T,R] = Bool(f'Y_{idx_string}')
 
-        self.started = False
+        self.started = True
 
     def add_constraints(self):
-        if not self.check:
+        if not self.check():
             return -1
 
         # C1: No more than two sessions in the same room, C2: Sessions must be contiguous
@@ -76,75 +77,6 @@ class TimetableScheduler():
                     ),
                         f"C2-{S}%{T}%{R}"
                 )
-
-            """
-            # C2
-            S_h = self.database.get_hours(S)
-
-            flag_forward = False
-            flag_backward = False
-
-            if T + S_h - 1 > max(self.T):
-                flag_forward = True
-
-            if T - S_h + 1 < 0:
-                flag_backward = True
-
-            for k in range(0, S_h):
-                if ((T+k) // 7) != (T // 7):
-                    flag_forward = True
-
-                if ((T-k) // 7) != (T // 7):
-                    flag_backward = True 
-            
-            if flag_forward and flag_backward: # neither window is accepted (shouldn't happen...)
-                print("WARNING: UNSOLVABLE MODEL")
-                self.solver.assert_and_track(
-                    Implies(
-                        self.X[S,T,R],
-                        False
-                    ),
-                    f'C2-unsolvable-{S}%{T}%{R}'
-                ) 
-
-            elif flag_forward and not flag_backward: # forward window is not accepted
-                self.solver.assert_and_track(
-                    Implies(
-                        self.X[S,T,R],
-                        And(
-                            [ self.X[S, T-k, R] for k in range(0, S_h) ]
-                        )
-                    ),
-                    f'C2-{S}%{T}%{R}'
-                )
-
-            elif flag_backward and not flag_forward: # backward window is not accepted
-                self.solver.assert_and_track(
-                    Implies(
-                        self.X[S,T,R],
-                        And(
-                            [ self.X[S, T+k, R] for k in range(0, S_h) ]
-                        )
-                    ),
-                    f'C2-{S}%{T}%{R}'
-                )
-
-            else: 
-                self.solver.assert_and_track(
-                    Implies(
-                        self.X[S,T,R],
-                        Or(
-                            And(
-                                [ self.X[S, T+k, R] for k in range(0, S_h) ]
-                            ),
-                            And(
-                                [ self.X[S, T-k, R] for k in range(0, S_h) ]
-                            )
-                        )
-                    ),
-                    f'C2-{S}%{T}%{R}'
-                )
-            """
 
         # C3: A professor can have only one session at the same time
         # C4: There cannot be >=2 sessions of courses belonging to the same CdS in the same timeslot (and any room) 
@@ -191,11 +123,10 @@ class TimetableScheduler():
                 f'B-C6-{S}'
             )
 
-
         self.posed = True
 
     def end(self):
-        if not self.check:
+        if not self.check():
             return -1 
          
         self.database.end()

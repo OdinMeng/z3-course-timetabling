@@ -12,49 +12,49 @@ class SQLUtility():
         self.con = sq3.connect(f"./databases/{self.fname}.db")
 
         TABLE_DDLS = {
-    "Professor": """
-        CREATE TABLE Professor (
-            IDProfessor INTEGER PRIMARY KEY,
-            Name        TEXT
-        );
-    """,
-    "Courses": """
-        CREATE TABLE Courses (
-            IDCourse     INTEGER PRIMARY KEY,
-            IDProfessor  INTEGER REFERENCES Professor(IDProfessor),
-            Name         TEXT
-        );
-    """,
-    "Session": """
-        CREATE TABLE Session (
-            IDSession INTEGER PRIMARY KEY,
-            Hours     INTEGER,
-            IDCourse  INTEGER REFERENCES Courses(IDCourse)
-        );
-    """,
-    "CdS": """
-        CREATE TABLE CdS (
-            IDCdS       INTEGER PRIMARY KEY,
-            NameCdS     TEXT,
-            NumStudents INTEGER
-        );
-    """,
-    "CourseCdS": """
-        CREATE TABLE CourseCdS (
-            IDCourse INTEGER,
-            IDCdS    INTEGER,
-            PRIMARY KEY (IDCourse, IDCdS),
-            FOREIGN KEY (IDCourse) REFERENCES Courses(IDCourse),
-            FOREIGN KEY (IDCdS)    REFERENCES CdS(IDCdS)
-        );
-    """,
-    "Rooms": """
-        CREATE TABLE Rooms (
-            IDRoom   INTEGER PRIMARY KEY,
-            Capacity INTEGER,
-            Name     TEXT
-        );
-    """
+            "Professor": """
+                CREATE TABLE Professor (
+                    IDProfessor INTEGER PRIMARY KEY,
+                    Name        TEXT
+                );
+            """,
+            "Courses": """
+                CREATE TABLE Courses (
+                    IDCourse     INTEGER PRIMARY KEY,
+                    IDProfessor  INTEGER REFERENCES Professor(IDProfessor),
+                    Name         TEXT
+                );
+            """,
+            "Session": """
+                CREATE TABLE Session (
+                    IDSession INTEGER PRIMARY KEY,
+                    Hours     INTEGER,
+                    IDCourse  INTEGER REFERENCES Courses(IDCourse)
+                );
+            """,
+            "CdS": """
+                CREATE TABLE CdS (
+                    IDCdS       INTEGER PRIMARY KEY,
+                    NameCdS     TEXT,
+                    NumStudents INTEGER
+                );
+            """,
+            "CourseCdS": """
+                CREATE TABLE CourseCdS (
+                    IDCourse INTEGER,
+                    IDCdS    INTEGER,
+                    PRIMARY KEY (IDCourse, IDCdS),
+                    FOREIGN KEY (IDCourse) REFERENCES Courses(IDCourse),
+                    FOREIGN KEY (IDCdS)    REFERENCES CdS(IDCdS)
+                );
+            """,
+            "Rooms": """
+                CREATE TABLE Rooms (
+                    IDRoom   INTEGER PRIMARY KEY,
+                    Capacity INTEGER,
+                    Name     TEXT
+                );
+            """
             }
         for table_name in ["Professor", "Courses", "Session", "CdS", "CourseCdS", "Rooms"]:
             try:
@@ -218,10 +218,7 @@ class SQLUtility():
 
 
     def execute_query(self, query):
-        # DA USARE TEMPORANEAMENTE!!!
         self.check()
 
         q = self.con.execute(query)
         return q
-
-    # sono tutte delle SELECT o robe strane bruh
