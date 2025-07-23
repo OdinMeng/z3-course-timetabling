@@ -139,12 +139,23 @@ class TimetableScheduler():
         if c == sat:
             print("TIME TABLE SUCCESSFULLY CREATED")
             self.model = self.solver.model()
-    
+
+            print("Saving the schedule in the SQL Database...")
+            
+            self.database.create_schedule()
+
+            for t in self.T:
+                for (S, A) in itertools.product(self.indexes['Sessions'], self.indexes['Rooms']):
+                    if self.model.evaluate(self.X[S,t,A], model_completion=True):
+                        self.database.insert_entry(S,t,A)
+
+            print("Schedule saved")
+
         elif c == unsat:
             print("TIME TABLE FAILED")
 
     def check(self):
-        if not self.started():
+        if not self.started:
             print("[ERROR] Database not started yet. Please call the .start() method.")
-            return -1
-
+            return False
+        return True

@@ -222,3 +222,27 @@ class SQLUtility():
 
         q = self.con.execute(query)
         return q
+
+    def create_schedule(self):
+        self.check()
+
+        try:
+            self.con.execute("DROP TABLE SCHEDULE;")
+        except:
+            pass
+
+        self.con.execute("""
+            CREATE TABLE SCHEDULE(
+                            Timeslot INTEGER,
+                            Session INTEGER,
+                            Room INTEGER,
+                            FOREIGN KEY (Session) REFERENCES Session(IDSession),
+                            FOREIGN KEY (Room) REFERENCES Rooms(IDRoom)
+                            );
+        """)
+        self.con.execute("DELETE FROM SCHEDULE WHERE 1=1;")
+        self.con.commit()
+
+    def insert_entry(self, S, T, A):
+        self.con.execute("INSERT INTO SCHEDULE VALUES (?, ?, ?);", (S,T,A,))
+        self.con.commit()
