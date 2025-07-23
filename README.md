@@ -11,7 +11,9 @@ In particular, it will use the SAT-solver Z3 and a well-defined logic formulatio
 
 ---
 
-# Step 1 — Modellazione del problema
+# Modellizzazione e Formulazione del Problema
+
+## Step 1 — Modellizzazione del problema
 
 - **Ogni corso** è associato ad **una o più sessioni**, con una lunghezza determinata a priori.  
   *Esempio*: Analisi 1 ha 6 ore settimanali totali, quindi potrebbe essere suddivisa in 3 sessioni da 2 ore ciascuna.
@@ -27,9 +29,7 @@ Si da una rappresentazione della modellizzazione del problema con lo schema rela
 
 ![Relational Schema](./miscellaneous/schema.png)
 
----
-
-# Step 2 — Formulazione logica
+## Step 2 — Formulazione logica
 
 **Notazione**
 
@@ -59,17 +59,13 @@ Si da una rappresentazione della modellizzazione del problema con lo schema rela
 - Aula → Capienza:  \\
   $$K : \mathcal{A} \rightarrow \mathbb{N}^\*$$
 
----
-
-## Variabili decisionali
+**Variabili decisionali**
 
 - $$X_{S,T,A}$$: dato $S \in \mathcal{S}, T \in \mathcal{T}, A \in \mathcal{A}$, indica se inserisco la sessione $S$ nello slot $T$ in aula $A$ (booleano).
 
 - $$Y_{S,T,A}$$: come prima, indica se la sessione $S$ in aula $A$ **inizia** nello slot $T$ (booleano).
 
----
-
-## Vincoli
+**Vincoli**
 
 **C1 — Un solo evento per aula e slot**  \\
 Nello stesso slot e nella stessa aula ci può essere una sola sessione:
@@ -127,3 +123,17 @@ $$
 \forall S,T,A \quad X_{S,T,A} \Rightarrow \bigwedge_{A' \ne A} \neg X_{S,T,A'}
 $$
 
+---
+
+# Struttura del Repo
+
+`sql_utilities.py`: Per implementare la modellizzazione del problema si userà un database in SQLite3. In questo file verranno forniti gli strumenti per interrogare il database. Le funzioni implementate in questo file sono fatti per fornire le informazioni al modello; tuttavia vi è la funzione `execute_query` generica che permette all'utente di interrogare il database arbitrariamente. Per creare il database contenenti i dati l'utente deve crearlo da solo mediante SQLite3 e porlo nella cartella `./databases/`. Come supporto alla creazione del database, è fornito uno script in `./fill_data/` per creare il database vuoto, e altri script come esempi per fornire i dati.
+
+`model.py`: In questo modulo vi è la implementazione effettiva del modello e i vincoli essenziali. In particolare il risolutore verrà fornito come un oggetto Python, con i metodi `.start()`, `.add_constraints()` e `.solve()`. Per creare e usare un risolutore è sufficiente importare il modulo e creare un'istanza dell'oggetto `TimeTableScheduler(fname, timeslots_per_day)`, dove `fname` è il nome del database e `timeslots_per_day` è la quantità dei timeslot che si vuole dare per giorno.
+
+`demo.ipynb`: Il notebook illustra i metodi con cui si può impiegare il modulo scritto in `model.py`. In particolare, nel notebook verranno trattati tre scenari:
+1. Un esempio per mostrare la funzionalità del modello. Questo è uno scenario puramente fittizzio, creato ai fini di provare il modello.
+2. I corsi universitari della triennale in AIDA del prossimo semestre
+3. L'orario delle lezioni di un liceo linguistico, del triennio di una classe.
+
+Notiamo che ad ogni scenario si può creare dei vincoli aggiuntivi come si desidera, per occuparsi di casi più specifici.

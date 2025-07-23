@@ -195,7 +195,7 @@ class SQLUtility():
     
     def get_courses(self, cds) -> List:
         self.check()
-        query = self.con.execute("SELECT DISTINCT Courses.IDCourse FROM Courses, CourseCdS WHERE CourseCdS.IDCdS = ?;", (cds,))
+        query = self.con.execute("SELECT DISTINCT Courses.IDCourse FROM Courses, CourseCdS WHERE CourseCdS.IDCdS = ? AND Courses.IDCourse = CourseCdS.IDCourse;", (cds,))
 
         return [i[0] for i in query.fetchall()]
 

@@ -61,7 +61,7 @@ class TimetableScheduler():
             # C2: modified
             S_h = self.database.get_hours(S)
 
-            if T+S_h > max(self.T) or ((T+S_h) // self.timeslots_per_day) != (T//self.timeslots_per_day):
+            if T+S_h-1 > max(self.T) or ((T+S_h-1) // self.timeslots_per_day) != (T//self.timeslots_per_day):
                 self.solver.assert_and_track(
                         Not(self.Y[S,T,R]),
                     f"noC2-{S}%{T}%{R}"
@@ -182,11 +182,13 @@ class TimetableScheduler():
 
         # C6: Every session must be organized exactly only one time (i.e. the amount of hours are exactly right)
         for S in self.indexes['Sessions']:
-            h = self.database.get_hours(S)
-
             self.solver.assert_and_track(
-                sum([self.Y[S, T, R] for (T,R) in itertools.product(self.T, self.indexes['Rooms'])]) == 1,
+                AtMost( *[self.Y[S, T, R] for (T,R) in itertools.product(self.T, self.indexes['Rooms'])], 1),
                 f'A-C6-{S}'
+            )
+            self.solver.assert_and_track(
+                AtLeast( *[self.Y[S, T, R] for (T,R) in itertools.product(self.T, self.indexes['Rooms'])], 1),
+                f'B-C6-{S}'
             )
 
 
