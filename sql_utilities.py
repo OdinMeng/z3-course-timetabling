@@ -244,5 +244,5 @@ class SQLUtility():
         self.con.commit()
 
     def insert_entry(self, S, T, A):
-        self.con.execute("INSERT INTO SCHEDULE VALUES (?, ?, ?);", (S,T,A,))
+        self.con.execute("INSERT INTO SCHEDULE VALUES (?, ?, ?);", (T, S, A,))
         self.con.commit()
