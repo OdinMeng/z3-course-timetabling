@@ -216,17 +216,36 @@ class SQLUtility():
 
         return RETDICT
 
+    def get_schedule(self):
+        
+        query = self.con.execute("""
+        SELECT  SC.timeslot,
+                C.NAME,
+                R.NAME
+        FROM    schedule SC
+                JOIN rooms R
+                    ON SC.room = R.idroom
+                JOIN session S
+                    ON SC.session = S.idsession
+                JOIN courses C
+                    ON S.idcourse = C.idcourse
+        ORDER BY   SC.TIMESLOT ASC;
+                                 """)
+        return query.fetchall()
 
     def execute_query(self, query):
         self.check()
 
         q = self.con.execute(query)
         return q
+    
 
     def create_schedule(self):
+        # to be deleted and renamed to clear_schedule
         self.check()
 
         try:
+            self.con.execute("DELETE FROM SCHEDULE WHERE 1=1;")
             self.con.execute("DROP TABLE SCHEDULE;")
         except:
             pass
@@ -237,9 +256,11 @@ class SQLUtility():
                             Session INTEGER,
                             Room INTEGER,
                             FOREIGN KEY (Session) REFERENCES Session(IDSession),
-                            FOREIGN KEY (Room) REFERENCES Rooms(IDRoom)
+                            FOREIGN KEY (Room) REFERENCES Rooms(IDRoom),
+                            PRIMARY KEY(Timeslot, Session, Room)
                             );
         """)
+
         self.con.execute("DELETE FROM SCHEDULE WHERE 1=1;")
         self.con.commit()
 

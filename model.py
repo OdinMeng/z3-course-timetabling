@@ -3,11 +3,26 @@
 from z3 import * 
 import itertools
 from sql_utilities import SQLUtility
+import numpy as np 
+import pandas as pd 
 
 class TimetableScheduler():
-    def __init__(self, fname: str, timeslots_per_day: int):
+    def __init__(self, fname: str, timeslots_per_day: int, t_start = 8, t_end = None):
         self.timeslots_per_day = timeslots_per_day
         self.fname = fname
+        self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+        if t_end == None:
+            t_end = t_start + timeslots_per_day
+
+        if t_end - t_start < 0 or t_end - t_start != timeslots_per_day or not(t_start in range(0, 24)) or not (t_end in range(0,24)):
+            print("WARNING: INVALID INPUT DETECTED WITH T_START AND T_END. ROLLING BACK TO DEFAULT PARAMETERS")
+            t_start = 8
+            t_end = 8 + timeslots_per_day
+
+        self.hours = []
+        for i in range(t_start, t_end):
+            self.hours.append(f"{str(i).zfill(2)}:00 - {str(i+1).zfill(2)}:00")
 
         self.solver = Solver()
         self.model = None
@@ -153,6 +168,50 @@ class TimetableScheduler():
 
         elif c == unsat:
             print("TIME TABLE FAILED")
+
+    def print_schedule_df(self):
+        """print the schedule in pandas dataframe format"""
+
+        raw_schedule = self.database.get_schedule()
+        ptr_raw = 0
+
+        if raw_schedule == []:
+            raise Exception("SCHEDULE NOT FOUND")
+        
+        processed_schedule = []
+
+        for t in self.T: 
+            t_i = []
+
+            flag = False
+            if ptr_raw >= len(raw_schedule):
+                flag = True   
+
+            if not flag:
+                entry = raw_schedule[ptr_raw]
+            while entry[0] == t and not flag:
+                t_i.append(f"{entry[1]} [{entry[2]}]")
+                ptr_raw += 1
+                
+                if ptr_raw >= len(raw_schedule):
+                    break 
+
+                entry = raw_schedule[ptr_raw]
+
+            if t_i == []:
+                t_i = ["NO LECTURES / ACTIVITIES"]
+
+            processed_schedule.append(" > " + "\n> ".join(t_i))
+
+        np_schedule = np.array(processed_schedule, dtype=object)
+        np_schedule = np_schedule.reshape(6, self.timeslots_per_day)
+
+        df = pd.DataFrame(np_schedule, columns=self.hours, index=self.days)
+
+        return df.T
+
+
+
 
     def check(self):
         if not self.started:

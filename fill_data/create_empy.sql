@@ -34,3 +34,12 @@ CREATE TABLE Rooms (
     Capacity INTEGER,
     Name     TEXT
 );
+
+CREATE TABLE SCHEDULE(
+    Timeslot INTEGER,
+    Session INTEGER,
+    Room INTEGER,
+    FOREIGN KEY (Session) REFERENCES Session(IDSession),
+    FOREIGN KEY (Room) REFERENCES Rooms(IDRoom),
+    PRIMARY KEY(Timeslot, Session, Room)
+);
