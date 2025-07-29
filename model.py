@@ -5,6 +5,8 @@ import itertools
 from sql_utilities import SQLUtility
 import numpy as np 
 import pandas as pd 
+from typing import Literal
+from weekplot import plotSchedule
 
 class TimetableScheduler():
     def __init__(self, fname: str, timeslots_per_day: int, t_start = 8, t_end = None):
@@ -23,6 +25,8 @@ class TimetableScheduler():
         self.hours = []
         for i in range(t_start, t_end):
             self.hours.append(f"{str(i).zfill(2)}:00 - {str(i+1).zfill(2)}:00")
+
+        self.t_start = t_start
 
         self.solver = Solver()
         self.model = None
@@ -210,7 +214,103 @@ class TimetableScheduler():
 
         return df.T
 
+    def draw_calendar(self, name: str, by: Literal['cds', 'prof', 'course', 'room'], id: int):
+        if by not in ['cds', 'prof', 'course', 'room']:
+            raise Exception("no")
+        self.check()
+        # Prints calendar with matplotlib.
+        # NOTE: To make this simpler, I must guarantee the uniqueness of the events in the graphical representation (otherwise it would be too technically delicate with Matplotlib and I wouldn't be going too far for this).
+        # So users can draw the calendar by various methods:
+        # - By CdS (view the sessions of a CdS)
+        # - By professor (view the sessions of a professor)
+        # - By Course (view sessions)
+        # - By room (view the occupancy of each room)
 
+        # TODO: implement some weird sql queries
+        # !!! : I MIGHT HAVE TO USE THE Y VARIABLES INSTEAD OF X SO I CAN PROPERLY CALCULATE HOURS  
+        # OR HOW CAN I HANDLE CONTIGUITY? WITH A CTR??? IDK MAN
+
+        schedule = self.database.get_schedule_subset(by, id)
+        
+        map_start = {} # T -> Starting hour
+        map_end = {}  # T -> Ending hour
+        map_courses_idx = {} # Maps a course ID to an unique index from 0 to len(colormap).
+
+        names = self.database.get_names()
+
+        courses_name = names['Courses']
+        rooms_name = names['Rooms']
+        cds_name = names['CdS']
+        prof_name = names['Professors']
+
+        colormap = [
+            'gray', 'sienna', 'lightgoldenrodyellow', 'mediumspringgreen', 'deepskyblue', 'darkorchid',
+            'silver', 'sandybrown', 'olivedrab', 'lightseagreen', 'aliceblue', 'plum',
+            'rosybrown', 'bisque', 'olivedrab', 'lightseagreen', 'slategray', 'mediumvioletred',
+            'firebrick', 'moccasin', 'chartreuse', 'paleturquoise', 'royalblue', 'palevioletred',
+            'red', 'gold', 'palegreen', 'paleturquoise', 'navy', 
+            'darksalmon', 'darkkhaki', 'darkgreen', 'darkcyan', 'blue',
+            'seagreen', 'darkturquoise', 'mediumpurple'
+        ]
+
+        i = 0
+        for (T, C, A) in schedule:
+            if not (C in map_courses_idx):
+                if i > len(colormap):
+                    raise Exception("too many colours")
+                
+                map_courses_idx[C] = i
+                i += 1
+
+        for t in self.T:
+            map_start[t] = self.t_start + (t % self.timeslots_per_day)
+            map_end[t] = self.t_start + (t % self.timeslots_per_day) + 1
+
+        # create .txt calendar and fill events entry by entry
+        current_course = None
+        current_room = None
+        t_s = None 
+        t_f = None
+        with open(fname := f"./timetables/{name}_{by}_{id}.txt", 'w') as f:
+            for (T, C, A) in schedule:
+                # base case: current_course and current_room is different from the currently iterated one
+                # write:
+                # - name
+                # - day
+                if current_course != C or current_room != A:
+                    if current_course != None or current_room != None:
+                        f.write(f"{str(map_start[t_s]).zfill(2)}:00 - {str(map_end[t_f]).zfill(2)}:00\n")
+                        f.write(f"{colormap[map_courses_idx[current_course]]}\n")
+                        f.write("\n")
+
+                    t_s = T
+                    t_f = T
+                    current_course = C
+                    current_room = A 
+                    day_i = (T // self.timeslots_per_day)
+                    day = self.days[day_i][:3]
+
+                    f.write(f"{courses_name[C]} [{rooms_name[A]}]\n")
+                    f.write(f"{day}\n")
+                else:
+                    t_f = T
+
+            else:
+                    t_f = T
+
+                    f.write(f"{str(map_start[t_s]).zfill(2)}:00 - {str(map_end[t_f]).zfill(2)}:00\n")
+                    f.write(f"{colormap[map_courses_idx[C]]}\n")
+                    f.write("\n")
+
+        
+        if by == 'cds':
+            plotSchedule(fname, f"Course in {cds_name[id]}")
+        if by == 'prof':
+            plotSchedule(fname, f"Prof. {prof_name[id]}")
+        if by == 'course':
+            plotSchedule(fname, f"Lectures for {courses_name[id]}")
+        if by == 'room':
+            plotSchedule(fname, f"Room {rooms_name[id]}")
 
 
     def check(self):

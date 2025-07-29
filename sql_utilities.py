@@ -1,7 +1,7 @@
 """File containing SQL statements for retrieving necessary data from the database"""
 
 import sqlite3 as sq3
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 class SQLUtility():
     def __init__(self, fname):
@@ -231,6 +231,64 @@ class SQLUtility():
                     ON S.idcourse = C.idcourse
         ORDER BY   SC.TIMESLOT ASC;
                                  """)
+        return query.fetchall()
+    
+    def get_schedule_subset(self, by: Literal['cds', 'prof', 'course', 'room'], id: int):
+        query = None
+
+        if by == 'cds':
+            query = self.con.execute("""
+                                     SELECT SC.TIMESLOT, C.IDCourse, R.IDRoom
+                                     FROM SCHEDULE SC 
+                                        JOIN ROOMS R ON R.IDRoom = SC.Room
+                                        JOIN SESSION S ON SC.SESSION = S.IDSESSION
+                                        JOIN COURSES C ON S.IDCOURSE = C.IDCOURSE
+                                        JOIN COURSECDS T ON T.IDCOURSE = C.IDCOURSE 
+                                        JOIN CDS ON CDS.IDCDS = T.IDCDS
+                                     WHERE
+                                        CDS.IDCDS = ?
+                                     ORDER BY SC.TIMESLOT ASC, C.IDCOURSE ASC, R.IDROOM ASC;
+                                     """, (id,))
+
+        elif by == 'prof':
+            query = self.con.execute("""
+                                     SELECT SC.TIMESLOT, C.IDCourse, R.IDRoom
+                                     FROM SCHEDULE SC 
+                                        JOIN ROOMS R ON R.IDRoom = SC.Room
+                                        JOIN SESSION S ON SC.SESSION = S.IDSESSION
+                                        JOIN COURSES C ON S.IDCOURSE = C.IDCOURSE
+                                        JOIN PROFESSOR P ON P.IDPROFESSOR = C.IDPROFESSOR
+                                     WHERE
+                                        P.IDPROFESSOR = ?
+                                     ORDER BY SC.TIMESLOT ASC, C.IDCOURSE ASC, R.IDROOM ASC;
+                                     """, (id,))
+
+        elif by == 'course':
+            query = self.con.execute("""
+                                     SELECT SC.TIMESLOT, C.IDCourse, R.IDRoom
+                                     FROM SCHEDULE SC 
+                                        JOIN ROOMS R ON R.IDRoom = SC.Room
+                                        JOIN SESSION S ON SC.SESSION = S.IDSESSION
+                                        JOIN COURSES C ON S.IDCOURSE = C.IDCOURSE
+                                     WHERE
+                                        C.IDCourse = ?
+                                     ORDER BY SC.TIMESLOT ASC, C.IDCOURSE ASC, R.IDROOM ASC;
+                                     """, (id,))
+
+        elif by == 'room':
+            query = self.con.execute("""
+                                     SELECT SC.TIMESLOT, C.IDCourse, R.IDRoom
+                                     FROM SCHEDULE SC 
+                                        JOIN ROOMS R ON R.IDRoom = SC.Room
+                                        JOIN SESSION S ON SC.SESSION = S.IDSESSION
+                                        JOIN COURSES C ON S.IDCOURSE = C.IDCOURSE
+                                     WHERE
+                                        R.IDRoom = ?
+                                     ORDER BY SC.TIMESLOT ASC, C.IDCOURSE ASC, R.IDROOM ASC;
+                                     """, (id,))
+        else:
+            raise Exception("INVALID INPUT")
+        
         return query.fetchall()
 
     def execute_query(self, query):
