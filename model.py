@@ -170,6 +170,48 @@ class TimetableScheduler():
 
             print("Schedule saved")
 
+
+            """
+            # tries to improve schedule by adding an optional constraint: a session of a course can happen only once per day (e.g. a lecture of Maths can happen at most once on sunday)
+            for (S,T) in itertools.product(self.indexes['Sessions'], self.T):
+                self.solver.add(
+                    Implies(
+                        Or( [self.X[S,T,A] for A in self.indexes['Rooms']] ),
+                        And( [Not(self.X[Si, Ti, Ai]) for (Si, Ti, Ai) in 
+                              itertools.product(self.database.get_sessions(self.database.get_course(S)), 
+                                                range(T//self.timeslots_per_day, T//self.timeslots_per_day+self.timeslots_per_day),
+                                                self.indexes['Rooms']) if Si != S] )
+                    )
+                )
+            """
+
+            for (i,j) in itertools.product(self.indexes['Courses'], [0,1,2,3,4,5]):
+                self.solver.add(
+                    AtMost(
+                        *[self.Y[S,T,V] for (S,T,V) in itertools.product(self.database.get_sessions(i), range(j*self.timeslots_per_day, j*self.timeslots_per_day+self.timeslots_per_day), self.indexes['Rooms'])],
+                        1
+                    )
+                ) 
+
+            print("TRYING TO IMPROVE THE MODEL...")
+
+            c2 = self.solver.check()
+            if c2 == sat:
+                print("TIME TABLE IMPROVED")
+                self.model = self.solver.model()
+
+                print("Saving the improved schedule in the SQL Database...")
+                
+                self.database.create_schedule()
+
+                for t in self.T:
+                    for (S, A) in itertools.product(self.indexes['Sessions'], self.indexes['Rooms']):
+                        if self.model.evaluate(self.X[S,t,A], model_completion=True):
+                            self.database.insert_entry(S,t,A)
+                            
+            elif c2 == unsat:
+                print("TIME TABLE COULD NOT BE IMPROVED")
+
         elif c == unsat:
             print("TIME TABLE FAILED")
 
@@ -277,7 +319,7 @@ class TimetableScheduler():
                 # write:
                 # - name
                 # - day
-                if current_course != C or current_room != A:
+                if current_course != C or current_room != A or T - t_f > 1:
                     if current_course != None or current_room != None:
                         f.write(f"{str(map_start[t_s]).zfill(2)}:00 - {str(map_end[t_f]).zfill(2)}:00\n")
                         f.write(f"{colormap[map_courses_idx[current_course]]}\n")

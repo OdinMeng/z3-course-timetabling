@@ -305,6 +305,7 @@ class SQLUtility():
         try:
             self.con.execute("DELETE FROM SCHEDULE WHERE 1=1;")
             self.con.execute("DROP TABLE SCHEDULE;")
+            self.con.commit()
         except:
             pass
 

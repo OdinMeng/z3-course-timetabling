@@ -110,7 +110,4 @@ def plotSchedule(fname, title):
     ax.set_yticklabels(["{0}:00".format(h) for h in range(ceil(earliest), ceil(latest))])
     ax.grid(axis='y', linestyle='--', linewidth=0.5)
 
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-            fancybox=True, shadow=True, ncol=5)
-    
     plt.show()
