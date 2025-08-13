@@ -1,14 +1,20 @@
-"""File containing SQL statements for retrieving necessary data from the database"""
+"""
+File containing SQL statements for retrieving necessary data from the database
+"""
 
 import sqlite3 as sq3
 from typing import Dict, List, Literal
 
 class SQLUtility():
     def __init__(self, fname):
+        """Initialize the utility with the database filename.
+        Input: fname (str) – database filename without extension."""
         self.fname = fname 
         self.con = None
 
     def start(self):
+        """Connect to the database and create required tables if they do not exist."""
+
         self.con = sq3.connect(f"./databases/{self.fname}.db")
 
         TABLE_DDLS = {
@@ -65,6 +71,10 @@ class SQLUtility():
                     self.con.execute(TABLE_DDLS[table_name])
 
     def check(self):
+        """Verify if the database connection is active.
+        Input: None
+        Output: True if active, raises Exception if not"""
+
         try:
             self.con.execute("SELECT 1;")
         except sq3.ProgrammingError:
@@ -74,17 +84,26 @@ class SQLUtility():
             raise Exception("no")
 
     def end(self):
+        """Close the database connection."""
+
         self.check()
         self.con.close()
 
     def get_course(self, session) -> int:
+        """Return the course ID associated with a given session ID.
+        Input: session (int)
+        Output: course ID (int)"""
+
         self.check()
-        # return COURSE only (unique!)
 
         query = self.con.execute("SELECT IDCourse FROM Session WHERE IDSession = ?", (session,))
         return query.fetchone()[0]
 
     def get_total_students(self, course) -> int:
+        """Return the total number of students for a given course ID.
+        Input: course (int)
+        Output: total students (int)"""
+
         self.check()
         # return integer with number of students
 
@@ -100,6 +119,10 @@ class SQLUtility():
         return query.fetchone()[0]
 
     def get_sessions(self, course) -> List:
+        """Return all session IDs for a given course ID.
+        Input: course (int)
+        Output: list of session IDs (List[int])"""
+
         self.check()
         # return sessions of a cours
 
@@ -112,14 +135,21 @@ class SQLUtility():
         return [i[0] for i in query.fetchall()]
 
     def get_hours(self, session) -> int:
+        """Return the number of hours for a given session ID.
+        Input: session (int)
+        Output: hours (int)"""
+
         self.check()
 
         query = self.con.execute("SELECT Hours FROM Session WHERE IDSession = ?;", (session,))
         return query.fetchone()[0]
 
     def get_other_session_courses(self, session) -> List:
+        """Return all session IDs of other courses in the same CdS, excluding the given session.
+        Input: session (int)
+        Output: list of session IDs (List[int])"""
+
         self.check()
-        # return sessions of other courses of the same CdS, excluding the session specified in input
 
         query = self.con.execute("""
             SELECT DISTINCT S2.IDSession
@@ -137,6 +167,10 @@ class SQLUtility():
         return [i[0] for i in query.fetchall()]
 
     def get_professor(self, session) -> int:
+        """Return the professor ID for the course of the given session.
+        Input: session (int)
+        Output: professor ID (int)"""
+
         self.check()
         #return the professor of the session's course
 
@@ -151,8 +185,12 @@ class SQLUtility():
         return query.fetchone()[0] 
 
     def get_capacity(self, room) -> int:
+        """Return the seating capacity of a given room ID.
+        Input: room (int)
+        Output: capacity (int)"""
+
         self.check()
-        # get capacity of a room
+
         query = self.con.execute("""
             SELECT DISTINCT Capacity 
             FROM Rooms
@@ -163,8 +201,11 @@ class SQLUtility():
         return query.fetchone()[0] 
 
     def get_ids(self) -> Dict:
+        """Return a dictionary of all IDs for sessions, courses, professors, CdS, and rooms.
+        Input: None
+        Output: dictionary with keys 'Sessions', 'Courses', 'Professors', 'CdS', 'Rooms' mapping to lists of IDs"""
+
         self.check()
-        # return dictionary with keys Sessions, Courses, CdS, Professors, Rooms each containing a list with primary keys
         RETDICT = {}
 
         s_sessions = self.con.execute("SELECT IDSession FROM Session;")
@@ -182,24 +223,41 @@ class SQLUtility():
         return RETDICT
     
     def get_class_name(self, cds) -> str:
+        """Return the name of a class (CdS) given its ID.
+        Input: cds (int)
+        Output: class name (str)"""
+
         self.check()
 
         query = self.con.execute("SELECT NameCdS FROM CdS WHERE IDCdS = ?;", (cds,))
         return query.fetchone()[0]
     
     def get_session_name(self, session) -> str:
+
+        """Return the course name for the given session ID.
+        Input: session (int)
+        Output: course name (str)"""
+
         self.check()
 
         query = self.con.execute("SELECT Name FROM Session S, Courses C WHERE S.IDSession = ? AND S.IDCourse = C.IDCourse;", (session,))
         return query.fetchone()[0]
     
     def get_courses(self, cds) -> List:
+        """Return all course IDs associated with a given CdS ID.
+        Input: cds (int)
+        Output: list of course IDs (List[int])"""
+
         self.check()
         query = self.con.execute("SELECT DISTINCT Courses.IDCourse FROM Courses, CourseCdS WHERE CourseCdS.IDCdS = ? AND Courses.IDCourse = CourseCdS.IDCourse;", (cds,))
 
         return [i[0] for i in query.fetchall()]
 
     def get_names(self) -> Dict:
+        """Return dictionaries mapping IDs to names for courses, professors, CdS, and rooms.
+        Input: None
+        Output: dictionary with keys 'Courses', 'Professors', 'CdS', 'Rooms' mapping to dicts of IDs to names"""
+
         self.check()
 
         RETDICT = {}
@@ -234,6 +292,10 @@ class SQLUtility():
         return query.fetchall()
     
     def get_schedule_subset(self, by: Literal['cds', 'prof', 'course', 'room'], id: int):
+        """Return a filtered schedule based on CdS, professor, course, or room ID.
+        Input: by (str), id (int)
+        Output: list of tuples with schedule entries"""
+
         query = None
 
         if by == 'cds':
@@ -292,6 +354,15 @@ class SQLUtility():
         return query.fetchall()
 
     def execute_query(self, query):
+        """
+        Execute an arbitrary SQL query and return the result.
+        NOTE: To be used in extremely specific cases. It is advised to rely on the other defined functions, otherwise.
+        Input: 
+            query (str)
+        Output: 
+            result set from database
+        """
+
         self.check()
 
         q = self.con.execute(query)
@@ -299,7 +370,8 @@ class SQLUtility():
     
 
     def create_schedule(self):
-        # to be deleted and renamed to clear_schedule
+        """Create or reset the schedule table in the database."""
+
         self.check()
 
         try:
@@ -324,5 +396,11 @@ class SQLUtility():
         self.con.commit()
 
     def insert_entry(self, S, T, A):
+        """Insert a new entry into the schedule table.
+        Input: 
+            S (int): session ID
+            T (int): timeslot
+            A (int): room ID
+        """
         self.con.execute("INSERT INTO SCHEDULE VALUES (?, ?, ?);", (T, S, A,))
         self.con.commit()

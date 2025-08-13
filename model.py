@@ -1,4 +1,6 @@
-"""File for defining the model with base constraints (note: the user can additionally add other constraints!)"""
+"""
+File containing the Z3 model and its constraints. The solver is represented as an object.
+"""
 
 from z3 import * 
 import itertools
@@ -9,10 +11,13 @@ from typing import Literal
 from weekplot import plotSchedule
 
 class TimetableScheduler():
-    def __init__(self, fname: str, timeslots_per_day: int, t_start = 8, t_end = None):
+    def __init__(self, fname: str, timeslots_per_day: int, t_start = 8, t_end = None, optional_constraints = False):
+        """Initialize the scheduler with database filename, timeslots per day, start/end times, and other flags."""
+
         self.timeslots_per_day = timeslots_per_day
         self.fname = fname
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        self.optional_constraints = optional_constraints
 
         if t_end == None:
             t_end = t_start + timeslots_per_day
@@ -42,6 +47,7 @@ class TimetableScheduler():
         self.posed = False
 
     def start(self):
+        """Connect to the SQL database and initialize variables for all sessions, times, and rooms."""
         self.database = SQLUtility(self.fname)
         self.database.start()
         self.indexes = self.database.get_ids()
@@ -55,6 +61,7 @@ class TimetableScheduler():
         self.started = True
 
     def add_constraints(self):
+        """Add all scheduling constraints to the Z3 solver."""
         if not self.check():
             return -1
 
@@ -97,6 +104,7 @@ class TimetableScheduler():
                         f"C2-{S}%{T}%{R}"
                 )
 
+
         # C3: A professor can have only one session at the same time
         # C4: There cannot be >=2 sessions of courses belonging to the same CdS in the same timeslot (and any room) 
         for (S,T) in itertools.product(self.indexes['Sessions'], self.T):
@@ -118,7 +126,7 @@ class TimetableScheduler():
                         ([ Not(self.X[Si, T, Ai]) for (Si, Ai) in itertools.product(self.database.get_other_session_courses(S), self.indexes['Rooms'])  ])
                     )),
                 f'C4-{S}%{T}'
-            )       
+            )      
             
 
         # C5: Rooms must be able to accomodate all students
@@ -142,15 +150,28 @@ class TimetableScheduler():
                 f'B-C6-{S}'
             )
 
+        if self.optional_constraints:
+            for (i,j) in itertools.product(self.indexes['Courses'], [0,1,2,3,4,5]):
+                self.solver.assert_and_track(
+                    AtMost(
+                        *[self.Y[S,T,V] for (S,T,V) in itertools.product(self.database.get_sessions(i), range(j*self.timeslots_per_day, j*self.timeslots_per_day+self.timeslots_per_day), self.indexes['Rooms'])],
+                        1
+                    ),
+                    f"OPTIONAL-{i}%{j}"
+                ) 
+
+
         self.posed = True
 
     def end(self):
+        """Close the database connection."""
         if not self.check():
             return -1 
          
         self.database.end()
 
     def solve(self):
+        """Run the solver and store the resulting schedule in the database if a solution is found."""
         if not self.check or not self.posed:
             return -1
         
@@ -165,58 +186,14 @@ class TimetableScheduler():
 
             for t in self.T:
                 for (S, A) in itertools.product(self.indexes['Sessions'], self.indexes['Rooms']):
-                    if self.model.evaluate(self.X[S,t,A], model_completion=True):
+                    val = self.model[self.X[S,t,A]]
+                    if val:
                         self.database.insert_entry(S,t,A)
 
             print("Schedule saved")
 
-
-            """
-            # tries to improve schedule by adding an optional constraint: a session of a course can happen only once per day (e.g. a lecture of Maths can happen at most once on sunday)
-            for (S,T) in itertools.product(self.indexes['Sessions'], self.T):
-                self.solver.add(
-                    Implies(
-                        Or( [self.X[S,T,A] for A in self.indexes['Rooms']] ),
-                        And( [Not(self.X[Si, Ti, Ai]) for (Si, Ti, Ai) in 
-                              itertools.product(self.database.get_sessions(self.database.get_course(S)), 
-                                                range(T//self.timeslots_per_day, T//self.timeslots_per_day+self.timeslots_per_day),
-                                                self.indexes['Rooms']) if Si != S] )
-                    )
-                )
-            """
-
-            for (i,j) in itertools.product(self.indexes['Courses'], [0,1,2,3,4,5]):
-                self.solver.add(
-                    AtMost(
-                        *[self.Y[S,T,V] for (S,T,V) in itertools.product(self.database.get_sessions(i), range(j*self.timeslots_per_day, j*self.timeslots_per_day+self.timeslots_per_day), self.indexes['Rooms'])],
-                        1
-                    )
-                ) 
-
-            print("TRYING TO IMPROVE THE MODEL...")
-
-            c2 = self.solver.check()
-            if c2 == sat:
-                print("TIME TABLE IMPROVED")
-                self.model = self.solver.model()
-
-                print("Saving the improved schedule in the SQL Database...")
-                
-                self.database.create_schedule()
-
-                for t in self.T:
-                    for (S, A) in itertools.product(self.indexes['Sessions'], self.indexes['Rooms']):
-                        if self.model.evaluate(self.X[S,t,A], model_completion=True):
-                            self.database.insert_entry(S,t,A)
-                            
-            elif c2 == unsat:
-                print("TIME TABLE COULD NOT BE IMPROVED")
-
-        elif c == unsat:
-            print("TIME TABLE FAILED")
-
     def print_schedule_df(self):
-        """print the schedule in pandas dataframe format"""
+        """Return the generated schedule as a pandas DataFrame."""
 
         raw_schedule = self.database.get_schedule()
         ptr_raw = 0
@@ -257,6 +234,8 @@ class TimetableScheduler():
         return df.T
 
     def draw_calendar(self, name: str, by: Literal['cds', 'prof', 'course', 'room'], id: int):
+        """Generate and save a visual calendar for a specific course, professor, CdS, or room."""
+        
         if by not in ['cds', 'prof', 'course', 'room']:
             raise Exception("no")
         self.check()
@@ -267,10 +246,6 @@ class TimetableScheduler():
         # - By professor (view the sessions of a professor)
         # - By Course (view sessions)
         # - By room (view the occupancy of each room)
-
-        # TODO: implement some weird sql queries
-        # !!! : I MIGHT HAVE TO USE THE Y VARIABLES INSTEAD OF X SO I CAN PROPERLY CALCULATE HOURS  
-        # OR HOW CAN I HANDLE CONTIGUITY? WITH A CTR??? IDK MAN
 
         schedule = self.database.get_schedule_subset(by, id)
         
@@ -356,6 +331,7 @@ class TimetableScheduler():
 
 
     def check(self):
+        """Verify if the database has been initialized before proceeding."""
         if not self.started:
             print("[ERROR] Database not started yet. Please call the .start() method.")
             return False

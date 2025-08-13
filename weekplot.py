@@ -1,3 +1,8 @@
+"""
+Auxiliary file to print a weekly calendar using Matplotlib.
+This is a modified version of another user's project. Original code available in the following link: https://github.com/utkuufuk/weekplot
+"""
+
 import yaml
 from math import ceil
 import matplotlib.pyplot as plt
